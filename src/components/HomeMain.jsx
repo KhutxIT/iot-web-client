@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Switch, TextField } from '@material-ui/core';
+import { Switch } from '@material-ui/core';
 import call_api from '../services/request';
-// import SensorChart from './SensorChart';
+import SensorChart from './SensorChart';
 import { HiLightBulb } from 'react-icons/hi';
 import { WiHumidity } from 'react-icons/wi';
 import { FaTemperatureHigh } from 'react-icons/fa';
-import { AiOutlineWarning } from 'react-icons/ai';
 import { makeStyles, Backdrop, CircularProgress } from '@material-ui/core';
 
-const TIME_INTERVAL = 1000 * 10;
+const TIME_INTERVAL = 1000 * 60 * 30;
 
 const useStyles = makeStyles((theme) => ({
     backdrop: {
@@ -19,103 +18,26 @@ const useStyles = makeStyles((theme) => ({
 
 function DHT11SensorBox({ data }) {
     return (
-        <div className="p-2 border rounded shadow">
+        <div className="mt-3 p-3 border rounded shadow">
             <h6><WiHumidity color='#2196f3' /> Humidity</h6>
-            <h6 className="pl-3 text-primary">{data ? data[1].toFixed(2) : ''} %</h6>
+            <h6 className="pl-3 text-primary">{data ? data.humidity : ''} %</h6>
             <h6><FaTemperatureHigh color='#e53935' /> Temperature</h6>
-            <h6 className="pl-3 text-danger">{data ? data[2].toFixed(2) : ''} °C</h6>
+            <h6 className="pl-3 text-danger">{data ? data.temperature : ''} °C</h6>
         </div>
     );
 }
 
-function LedSensorBox({ handle, checked }) {
+function LedSensorBox({ handle, checked, name }) {
     return (
-        <div className="mt-4 p-3 border rounded shadow d-flex">
-            <HiLightBulb color={checked ? '#ffc400' : 'gray'} size='2em' />
-            <Switch className="ml-auto" onChange={handle} checked={checked} />
-        </div>
-    );
-}
-
-function SoundSensorBox({ handle, data }) {
-    let dataSensor = data;
-
-    function handleChangeAuto() {
-        dataSensor.auto = !dataSensor.auto;
-        handle(dataSensor);
-    };
-
-    function handleChangeMaxRange(e) {
-        dataSensor.max_range = parseInt(e.target.value);
-        handle(dataSensor);
-    };
-
-    function handleChangeMinRange(e) {
-        dataSensor.min_range = parseInt(e.target.value);
-        handle(dataSensor);
-    };
-
-    return (
-        <div className="border rounded p-2 shadow">
-            <div className="full-width d-flex">
-                <h6 className="ml-1">Sound</h6>
-                <h6 className="ml-auto mr-1">{data?.value?.toFixed(2)}</h6>
-            </div>
-            <div className="full-width d-flex mt-2">
-                <h6 className="ml-1">Auto</h6>
-                <Switch className="ml-auto mr-1" size='small' onChange={handleChangeAuto} checked={data?.auto} />
-            </div>
-            <h6 className="ml-1 mt-3 text-uppercase">range for auto</h6>
-            <div className="full-width d-flex mt-3">
-                <TextField
-                    label="Max range"
-                    type="number"
-                    size='small'
-                    value={data?.max_range}
-                    onChange={handleChangeMaxRange}
-                    InputLabelProps={{
-                        shrink: true,
-                    }}
-                    color='secondary'
-                    variant="outlined"
-                />
-            </div>
-            <div className="full-width d-flex mt-3">
-                <TextField
-                    label="Min range"
-                    type="number"
-                    size='small'
-                    value={data?.min_range}
-                    onChange={handleChangeMinRange}
-                    InputLabelProps={{
-                        shrink: true,
-                    }}
-                    color='secondary'
-                    variant="outlined"
-                />
+        <div className='mt-3 p-2 border rounded shadow'>
+            <h6>{ name }</h6>
+            <div className="d-flex">
+                <HiLightBulb color={checked ? '#ffc400' : 'gray'} size='2em' />
+                <Switch className="ml-auto" onChange={handle} checked={checked} />
             </div>
         </div>
     );
 }
-
-function MQ5SensorBox({ data }) {
-
-    const status = data?.value > data?.danger ? "danger" : (data?.value > data?.warning ? "warning" : "safe");
-    const style = status === "safe" ? "success" : status;
-
-    return (
-        <div className={"full-width mt-2 p-2 border rounded shadow border-" + style}>
-            <h6 className="text-center text-uppercase">gas emissions</h6>
-            <h6 className="text-center">{data?.value?.toFixed(2)}</h6>
-            <h6 className={"text-center text-uppercase text-" + style}>
-                {status !== 'safe' ? <AiOutlineWarning /> : ''}
-                {status}
-                {status !== 'safe' ? <AiOutlineWarning /> : ''}
-            </h6>
-        </div>
-    );
-}
-
 
 function HomeMain() {
     const classes = useStyles();
@@ -124,9 +46,9 @@ function HomeMain() {
         setOpen(false);
     };
     const [dataChart, setDataChart] = useState([]);
-    const [dataLed, setDataLed] = useState({ data: { status: false } });
-    const [dataMQ5, setDataMQ5] = useState();
-    const [dataSound, setDataSound] = useState({ data: { auto: false } });
+    const [dataLed1, setDataLed1] = useState({ data: { status: false } });
+    const [dataLed2, setDataLed2] = useState({ data: { status: false } });
+    const [dataDht11, setDataDht11] = useState();
 
     async function getDataSensor() {
         const res = await call_api({
@@ -136,25 +58,21 @@ function HomeMain() {
 
         console.log(res.data.data);
 
-        // const [dht11, led, mq5, sound] = res.data.data;
-        // setDataLed(led);
-        // setDataMQ5(mq5);
-        // setDataSound(sound);
-        const [led, dht11, mq5, sound] = res.data.data;
-        setDataLed(led);
-        // setDataMQ5(mq5);
-        // setDataSound(sound);
+        const [led1, led2, dht11, weeklyLightsUsedTime] = res.data.data;
+        setDataLed1(led1);
+        setDataLed2(led2);
+        setDataDht11(dht11);
 
-        // const _dataChart = dht11.data.map(item => [item.time, item.humidity, item.temperature]);
-        // _dataChart.unshift(['time', 'humidity', 'temperature']);
+        const _dataChart = weeklyLightsUsedTime?.data.map(item => [item.time, item.led1, item.led2]);
+        _dataChart.unshift(['time', 'Living Room Light', 'Bed Room Light']);
 
-        // setDataChart(_dataChart);
+        setDataChart(_dataChart);
     }
 
-    async function updateDataSensor(data) {
+    async function turnOnOffLed(data) {
         const res = await call_api({
-            method: 'PUT',
-            url: '/sensor',
+            method: 'POST',
+            url: '/lights/operations',
             data: {
                 name: data.name,
                 data: data.data
@@ -163,29 +81,32 @@ function HomeMain() {
         console.log(res);
     }
 
-    function handleChangeLedStatus() {
+    function handleChangeLed1Status() {
         const dataUpdate = {
-            name: dataLed.name,
+            name: dataLed1.name,
             data: {
-                status: !dataLed.data.status
+                status: !dataLed1.data.status
             }
         };
-        setDataLed(dataUpdate);
-        updateDataSensor(dataUpdate);
+        setDataLed1(dataUpdate);
+        turnOnOffLed(dataUpdate);
     };
 
-    function handleChangeSoundData(data) {
+    function handleChangeLed2Status() {
         const dataUpdate = {
-            name: dataSound.name,
-            data: data
+            name: dataLed2.name,
+            data: {
+                status: !dataLed2.data.status
+            }
         };
-        setDataSound(dataUpdate);
-        updateDataSensor(dataUpdate);
+        setDataLed2(dataUpdate);
+        turnOnOffLed(dataUpdate);
     };
 
     useEffect(async () => {
         setOpen(true);
         await getDataSensor();
+        console.log('ahihi');
         setOpen(false);
 
         setInterval(async () => {
@@ -200,19 +121,16 @@ function HomeMain() {
             </Backdrop>
             <div className="row">
                 <div className="col-lg-8">
-                    {/* <SensorChart data={dataChart} /> */}
+                    <SensorChart data={dataChart} />
                 </div>
                 <div className="col-lg-4">
                     <div className="row">
                         <div className="col-md-6">
-                            <DHT11SensorBox data={dataChart[dataChart.length - 1]} />
-                            <LedSensorBox handle={handleChangeLedStatus} checked={dataLed?.data?.status} />
+                            <LedSensorBox handle={handleChangeLed1Status} checked={dataLed1?.data?.status} name="Living Room Light" />
+                            <LedSensorBox handle={handleChangeLed2Status} checked={dataLed2?.data?.status} name="Bedroom Light" />
                         </div>
                         <div className="col-md-6">
-                            <SoundSensorBox handle={handleChangeSoundData} data={dataSound?.data} />
-                        </div>
-                        <div className="col-12">
-                            <MQ5SensorBox data={dataMQ5?.data} />
+                            <DHT11SensorBox data={dataDht11?.data} />
                         </div>
                     </div>
                 </div>
